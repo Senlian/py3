@@ -11,41 +11,32 @@
 
 @time: 2018/9/18 17:16
 
-@module:python -m pip install
+@module:python -m pip install 
 
 @desc:
 python 3.6.3
 '''
-import wx, wx.aui
+import time
+import os, sys, hmac, re
+import wx, wx.aui, wx.adv
 import wx.stc as STC
-import time, os, sys, shutil
-import win32file, zipfile, json, re
-import socket, socketserver, hmac
-import threading
-from multiprocessing import freeze_support, Process
+import socket, threading
+from multiprocessing import freeze_support
 from common.ComponentID import *
 
-BindIPs = []
-StopIPs = []
-AuthKey = '123456'
-SrcDir = r'D:\IIS-Site\ClientResource\ClientPackage\zip'
-UnzipDir = r'D:\IIS-Site\ClientResource\ClientPackage\unzip'
-BakDir = r'D:\IIS-Site\ClientResource\ClientPackage\bak'
-DstDir = r"D:\IIS-Site\ClientResource\{host_id}\hotupdate\GameData"
-device_types = ("android", "ios", "mac", "windows")
+print(wx.version())
 VERSION = time.strftime("%Y.%m.%d")
 
 wildcard = u"zip files (*.zip)|*.zip|" \
            "rar files (*.rar)|*.rar|" \
            "tar files (*.tar)|*.tar|" \
            "txt files (*.txt)|*.txt|" \
+           "csv files (*.csv)|*.csv|" \
            "tar.gz files (*.tar.gz)|*.tar.gz|" \
            "All files (*.*)|*.*"
 
 
 # TODO: 打开文件
-
-
 def OpenFileDialog(parent=None, defaultDir='', defaultFile=''):
     if not defaultDir:
         defaultDir = defaultFile
@@ -68,10 +59,13 @@ def OpenFileDialog(parent=None, defaultDir='', defaultFile=''):
 class RootFrame(wx.Frame):
     def __init__(self, parent=None):
         super(RootFrame, self).__init__(parent=parent, id=ID_C_Root)
+
+
+
         self.settings()
 
     def settings(self):
-        self.SetTitle(u'客户端更新工具--s.v.{0}'.format(VERSION))
+        self.SetTitle(u'客户端更新工具--v.{0}'.format(VERSION))
         self.SetSize((460, 400))
         self.SetMinClientSize((460, 400))
         self.SetMaxClientSize((920, 400))
@@ -123,6 +117,12 @@ class LeftPage(wx.Panel):
     def __init__(self, parent=None):
         super(LeftPage, self).__init__(parent=parent)
         self.dialog = Dialogs(self)
+        # self.ctrl = wx.adv.AnimationCtrl(self, wx.NewIdRef(), pos=(0,0),size=(460,150))
+        # gif_name = r'E:\GitHub\py3\socketDemo1\2.gif'
+        # gif = self.ctrl.LoadFile(gif_name, wx.adv.ANIMATION_TYPE_GIF)
+        #
+        # self.ctrl.SetBackgroundColour(self.GetBackgroundColour())
+        # self.ctrl.Play()
         self.OnInit()
 
     def OnInit(self):
@@ -134,9 +134,17 @@ class LeftPage(wx.Panel):
         self.BtnSwitch = wx.Button(self, id=ID_C_BtnSwitch, label=">", size=(15, 15))
         self.BtnSwitch.SetForegroundColour(wx.BLUE)
 
+        self.BtnUpdate = wx.Button(self, ID_C_BtnUpdate, "更    新")
+        self.BtnUpdate.SetFont(self.FT_29RNB)
+        self.BtnUpdate.SetForegroundColour(wx.BLUE)
+
         self.vBox.Add(self.BtnSwitch, 0, wx.LEFT | wx.EXPAND, 435)
+        # self.vBox.Add(self.ctrl)
         self.vBox.Add(self.ServerFace())
+        self.vBox.AddSpacer(15)
+        self.vBox.Add(self.ClientFace())
         self.vBox.AddSpacer(10)
+        self.vBox.Add(self.BtnUpdate, 1, wx.ALL | wx.EXPAND, 5)
 
         self.SetSizer(self.vBox)
 
@@ -158,7 +166,7 @@ class LeftPage(wx.Panel):
         _stTextKey.SetFont(self.FT_9RNB)
         _TextKey = wx.TextCtrl(self, ID_C_SKey, '123456')
 
-        _btnConnet = wx.Button(self, ID_C_BtnCnt, "启动服务")
+        _btnConnet = wx.Button(self, ID_C_BtnCnt, "启动连接")
 
         _hBox.Add(_stTextIP, 1, wx.LEFT | wx.EXPAND, 5)
         _hBox.Add(_TextIP)
@@ -176,7 +184,7 @@ class LeftPage(wx.Panel):
         return _stBoxS
 
     def ClientFace(self):
-        _stBox = wx.StaticBox(parent=self, id=wx.NewId(), label="更新设置")
+        _stBox = wx.StaticBox(parent=self, id=wx.NewIdRef(), label="更新设置")
         _stBoxS = wx.StaticBoxSizer(_stBox, wx.VERTICAL)
         _hBox1 = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -259,6 +267,15 @@ class LeftPage(wx.Panel):
         _ServerKey = str(self.FindWindowById(ID_C_SKey).GetValue())
         return _ServerIP, _ServerPort, _ServerKey
 
+    def GetSrcFile(self):
+        return str(self.FindWindowById(ID_C_SrcFile).GetValue())
+
+    def GetUpdateInfo(self):
+        _SrcIP = str(self.FindWindowById(ID_C_IP).GetValue())
+        _SrcID = int(self.FindWindowById(ID_C_PkgID).GetValue())
+        _SrcType = str(self.FindWindowById(ID_C_PkgType).GetValue())
+        return _SrcIP, _SrcID, _SrcType
+
     def CheckIP(self, e):
         curId = e.GetId()
         item = self.FindWindowById(curId)
@@ -291,6 +308,17 @@ class LeftPage(wx.Panel):
             item.SetValue('5000')
             item.SetFocus()
         e.Skip()
+
+    def GetParameter(self):
+        DeviceIds = [ID_C_Windows, ID_C_MAC, ID_C_Android, ID_Ios]
+        parameters = []
+        for id in DeviceIds:
+            item = self.FindWindowById(id)
+            if item.GetValue():
+                parameters.append(item.GetLabel())
+        subdirItem = self.FindWindowById(ID_C_SubDir)
+        parameters.append(subdirItem.GetValue())
+        return parameters
 
 
 # TODO: 日志界面
@@ -337,6 +365,9 @@ class HomePage(wx.SplitterWindow):
 
         self.Bind(wx.EVT_BUTTON, self.OnClickSwitch, id=ID_C_BtnSwitch)
         self.Bind(wx.EVT_BUTTON, self.OnClickBtnCnt, id=ID_C_BtnCnt)
+        self.Bind(wx.EVT_BUTTON, self.OnClickBtnOpenFile, id=ID_C_BtnOpenFile)
+        self.Bind(wx.EVT_BUTTON, self.OnClickBtnSrc, id=ID_C_BtnSrc)
+        self.Bind(wx.EVT_BUTTON, self.OnClickUpdate, id=ID_C_BtnUpdate)
 
     def OnClickSwitch(self, e):
         curId = ID_C_BtnSwitch
@@ -351,41 +382,44 @@ class HomePage(wx.SplitterWindow):
     def OnClickBtnCnt(self, e=None):
         curId = ID_C_BtnCnt
         BtnConnect = self.FindWindowById(curId)
-        if BtnConnect.GetLabel() == '关闭服务':
+        if BtnConnect.GetLabel() == '断开连接':
             if self.ServerPipe:
                 self.ServerPipe.close()
-                self.right.AppendWarn('关闭服务端,%s:%s !' % (self.ServerIP, self.ServerPort))
+                self.right.AppendWarn('断开资源服连接,%s:%s!' % (self.ServerIP, self.ServerPort))
 
             self.GetParent().GetStatusBar().SetStatusText('', 1)
             self.GetParent().GetStatusBar().SetStatusText('', 2)
 
-            BtnConnect.SetLabel('启动服务')
+            BtnConnect.SetLabel('启动连接')
             BtnConnect.SetForegroundColour(wx.BLACK)
             BtnConnect.Update()
             if e:
                 e.Skip()
             return True
 
-        BtnConnect.SetLabel('启动中..')
+        BtnConnect.SetLabel('连接中..')
         BtnConnect.SetForegroundColour(wx.BLUE)
         BtnConnect.Update()
 
         self.ServerIP, self.ServerPort, self.ServerKey = self.left.GetServerInfo()
         try:
-            self.ServerPipe = SocketTreadServer(self.ServerIP, self.ServerPort, self.ServerKey, self)
-            self.ServerPipe.start()
-            BtnConnect.SetLabel('关闭服务')
+            self.ServerPipe = SocketClient()
+            self.ServerPipe.client(self.ServerIP, self.ServerPort, self.ServerKey)
+            BtnConnect.SetLabel('断开连接')
             BtnConnect.SetForegroundColour(wx.RED)
-            self.GetParent().GetStatusBar().SetStatusText(self.ServerIP + ':' + str(self.ServerPort), 1)
-            self.GetParent().GetStatusBar().SetStatusText('启动成功', 2)
-            self.right.AppendInfo('启动服务端成功,%s:%s' % (self.ServerIP, self.ServerPort))
+            print(self.ServerPipe.getsockname())
+            self.GetParent().GetStatusBar().SetStatusText(':'.join(map(str, self.ServerPipe.getsockname())), 1)
+            self.GetParent().GetStatusBar().SetStatusText('连接成功', 2)
+            self.right.AppendInfo('连接资源服务器成功,%s:%s' % (self.ServerIP, self.ServerPort))
+            self.right.AppendInfo(':'.join(map(str, self.ServerPipe.getsockname())))
             self.dialog.info('ok')
         except Exception as error:
             time.sleep(0.5)
-            BtnConnect.SetLabel('启动服务')
+            BtnConnect.SetLabel('启动连接')
             BtnConnect.SetForegroundColour(wx.BLACK)
+
             self.right.AppendError(error.__str__())
-            self.right.AppendInfo('启动服务端失败,%s:%s' % (self.ServerIP, self.ServerPort))
+            self.right.AppendInfo('连接资源服务器失败,%s:%s' % (self.ServerIP, self.ServerPort))
             self.dialog.warn(error.__str__())
         finally:
             BtnConnect.Update()
@@ -393,167 +427,142 @@ class HomePage(wx.SplitterWindow):
                 e.Skip()
         return True
 
+    def OnClickBtnOpenFile(self, e):
+        SrcFile = OpenFileDialog(self)
+        self.FindWindowById(ID_C_SrcFile).SetValue(SrcFile)
+        return e.Skip()
 
-class SocketServerHandler(socketserver.BaseRequestHandler):
-    def setup(self):
-        print(self.client_address)
-        status = '0'.encode('utf-8')
-        urandom = os.urandom(32)
-        # 发送加密方式
-        self.request.send(urandom)
-        self.GetKey = self.request.recv(1024).decode('utf-8')
-
-        if BindIPs and self.client_address[0] not in BindIPs:
-            status = '10001'.encode('utf-8')
-        elif StopIPs and self.client_address[0] in StopIPs:
-            status = '10002'.encode('utf-8')
-        else:
-            self.AuthKey = hmac.new(AuthKey.encode('utf-8'), urandom).hexdigest()
-            if self.GetKey == self.AuthKey:
-                self.request.sendall(status)
-                return True
-            else:
-                status = '10003'.encode('utf-8')
-        self.request.sendall(status)
-        self.request.close()
-        return False
-
-    def handle(self):
-        if not self.request:
-            return False
-        while True:
-            try:
-                self.job, self.SrcIP, self.SrcID, self.SrcType = self.request.recv(1024).decode('utf-8').split(',')
-                if self.SrcType == '热更新包':
-                    self.SrcType = 'HotUpdate'
-                else:
-                    self.SrcType = 'GamePackage'
-                self.DstDir = os.path.join(DstDir.format(host_id=self.SrcIP.split('.')[-1]), self.SrcType)
-                if (self.job and self.SrcIP and self.SrcID and self.SrcType):
-                    if not os.path.isdir(self.DstDir):
-                        self.request.sendall("Error1".encode('utf-8'))
-                        continue
-                    if self.SrcID == '1000':
-                        self.SrcID = 'yyplatform'
-                    if self.job == 'Upload':
-                        self.DownLoad()
-                    else:
-                        self.Update()
-                else:
-                    self.request.sendall("Error0".encode('utf-8'))
-                    continue
-            except Exception as e:
-                print(e, self.client_address)
-                self.request.close()
-                break
-
-    # TODO: 资源下载
-    def DownLoad(self):
-        print(self.job)
-        self.request.sendall("GetFileInfo".encode('utf-8'))
-        FileName, FileSize = self.request.recv(1024).decode('utf-8').split(',')
-        FilePath = os.path.join(SrcDir, self.SrcIP, self.SrcType, self.SrcID, FileName)
-        if FileName and FileSize:
-            try:
-                if os.path.isdir(os.path.dirname(FilePath)):
-                    shutil.rmtree(os.path.dirname(FilePath))
-                os.makedirs(os.path.dirname(FilePath))
-                self.request.sendall("Upload".encode('utf-8'))
-            except Exception as e:
-                print(e)
-                self.request.sendall("OtherUsed".encode('utf-8'))
-                return False
-
-            try:
-                f = open(FilePath, 'wb')
-                RecvSize = 0
-                while RecvSize < int(FileSize):
-                    data = self.request.recv(1024)
-                    RecvSize += len(data)
-                    f.write(data)
-                    print(RecvSize)
-                f.close()
-                print('download over')
-            except:
-                self.request.sendall("Error2".encode('utf-8'))
-                return False
-            finally:
-                f.close()
-        else:
-            self.request.sendall("Error3".encode('utf-8'))
-            return False
-        return True
-
-    # TODO: 资源更新
-    def Update(self):
-        self.request.sendall("Update".encode('utf-8'))
-        _data = self.request.recv(1024).decode('utf-8').split(',')
-        if len(_data) < 2:
-            self.request.sendall("Error6".encode('utf-8'))
-            return False
-        device_types = _data[0:-1] or ("android", "ios", "mac", "windows")
-        subDir = _data[-1] or '1'
-
-        print(self.job, self.SrcType, device_types, subDir)
-        self.SrcDir = os.path.join(SrcDir, self.SrcIP, self.SrcType, self.SrcID)
-        self.DstDir = os.path.join(self.DstDir, self.SrcID)
-        self.BakDir = os.path.join(BakDir, self.SrcIP, self.SrcType, self.SrcID)
-        if self.SrcType == 'GamePackage':
-            if self.SrcID == 'yyplatform':
-                self.request.sendall("Error5".encode('utf-8'))
-                return False
-            BackUpDir(self.DstDir, self.BakDir)
-            rst = CopyDir(self.SrcDir, self.DstDir, '.txt')
-            if rst:
-                self.request.sendall("ok".encode('utf-8'))
-                return True
-            else:
-                self.request.sendall("Error4".encode('utf-8'))
-                return False
-        else:
-            try:
-                self.SrcZipFile = os.path.join(self.SrcDir, os.listdir(self.SrcDir)[0])
-                self.SrcUnzipDir = os.path.join(UnzipDir, self.SrcIP, self.SrcType, self.SrcID)
-                if os.path.isdir(self.SrcUnzipDir):
-                    shutil.rmtree(self.SrcUnzipDir)
-                decompression_folder(self.SrcZipFile, self.SrcUnzipDir)
-                has_bak = False
-                for device in device_types:
-                    target_dir = os.path.join(self.DstDir, device, subDir)
-                    if not has_bak:
-                        has_bak = BackUpDir(target_dir, self.BakDir)
-                    CopyDir(self.SrcUnzipDir, target_dir, '.txt')
-                    rst = CopyDir(self.SrcUnzipDir, target_dir, '.zip')
-                    host_id = self.SrcIP.split('.')[-1]
-                    if not refresh_iis_cache(host_id, self.SrcID, device, subDir):
-                        restart_apppool("HotUpdate_" + host_id)
-                    if not rst:
-                        self.request.sendall("Error4".encode('utf-8'))
-                        return False
-                    else:
-                        continue
-                self.request.sendall("ok".encode('utf-8'))
-            except Exception as e:
-                self.request.sendall(e.__str__().encode('utf-8'))
-                return False
-            return True
-
-
-class SocketTreadServer(threading.Thread):
-    def __init__(self, host="192.168.1.18", port=5000, authkey=b"123456", parent=None):
-        super(SocketTreadServer, self).__init__()
-        self.server = socketserver.ThreadingTCPServer((host, int(port)), SocketServerHandler)
-
-    def run(self):
+    def OnClickBtnSrc(self, e):
+        SrcFile = self.left.GetSrcFile()
+        if not os.path.isfile(SrcFile):
+            self.dialog.warn('资源文件路径为空或资源不存在!')
+            return e.Skip()
+        FileSize = os.stat(SrcFile).st_size
+        self.SrcIP, self.SrcID, self.SrcType = self.left.GetUpdateInfo()
+        self.right.AppendInfo("准备上传资源，服务器IP: %s，游戏ID: %s,资源类型: %s。" % (self.SrcIP, self.SrcID, self.SrcType))
         try:
-            self.server.serve_forever()
+            self.ServerPipe.sendall(("Upload,%s,%s,%s" % (self.SrcIP, self.SrcID, self.SrcType)).encode('utf-8'))
+            ask = self.ServerPipe.recv(1024).decode('utf-8')
+            if ask == 'GetFileInfo':
+                self.ServerPipe.sendall(("%s,%s" % (os.path.basename(SrcFile), FileSize)).encode('utf-8'))
+                ask2 = self.ServerPipe.recv(1024).decode('utf-8')
+                if ask2 == 'Upload':
+                    UpSize = 0
+                    fopen = open(SrcFile, 'rb')
+                    while UpSize < FileSize:
+                        if FileSize - UpSize <= 1024:
+                            data = fopen.read(FileSize - UpSize)
+                            UpSize = FileSize
+                        else:
+                            data = fopen.read(1024)
+                            UpSize += 1024
+                        self.ServerPipe.sendall(data)
+                        print(UpSize)
+                    fopen.close()
+                    self.right.AppendInfo("上传成功。")
+                    self.dialog.info("上传成功。")
+                elif ask2 == 'OtherUsed':
+                    self.right.AppendWarn("%s,有其他大佬，也在上传该资源!" % ask2)
+                    self.dialog.warn("有其他大佬，也在上传该资源!")
+                else:
+                    self.right.AppendWarn("%s,未知原因导致资源上传失败!" % ask2)
+                    raise ExceptionMsg("未知原因导致资源上传失败!")
+            elif ask == 'Error1':
+                self.right.AppendWarn("%s, 服务器未部署'%s'的资源网站,请联系苦逼运维!" % (ask, self.SrcIP))
+                self.dialog.warn("服务器未部署'%s'的资源网站,请联系苦逼运维!" % self.SrcIP)
+            else:
+                self.right.AppendWarn("%s,未知原因导致资源上传失败!" % (ask, self.SrcIP))
+                raise ExceptionMsg("未知原因导致资源上传失败!")
+        except Exception as error:
+            self.dialog.error(error.__str__())
+            self.right.AppendError(error.__str__())
+            self.right.AppendWarn("上传资源失败!")
+            BtnConnect = self.FindWindowById(ID_C_BtnCnt)
+            BtnConnect.SetLabel('启动连接')
+            BtnConnect.SetForegroundColour(wx.BLACK)
+        finally:
+            e.Skip()
+
+    def OnClickUpdate(self, e):
+        self.SrcIP, self.SrcID, self.SrcType = self.left.GetUpdateInfo()
+        self.right.AppendInfo("准备更新资源，服务器IP: %s，游戏ID: %s,资源类型: %s。" % (self.SrcIP, self.SrcID, self.SrcType))
+        try:
+            self.ServerPipe.sendall(("Update,%s,%s,%s" % (self.SrcIP, self.SrcID, self.SrcType)).encode('utf-8'))
+            ask_pre = self.ServerPipe.recv(1024).decode('utf-8')
+            if ask_pre == 'Update':
+                self.ServerPipe.sendall((",".join(self.left.GetParameter())).encode('utf-8'))
+            else:
+                self.right.AppendWarn("%s, 服务器未部署'%s'的资源网站,请联系苦逼运维!" % (ask_pre, self.SrcIP))
+                self.dialog.warn("服务器未部署'%s'的资源网站,请联系苦逼运维!" % self.SrcIP)
+                return e.Skip()
+
+            ask = self.ServerPipe.recv(1024).decode('utf-8')
+            self.ServerPipe.settimeout(10)
+            if ask == 'Error1':
+                self.right.AppendWarn("%s, 服务器未部署'%s'的资源网站,请联系苦逼运维!" % (ask, self.SrcIP))
+                self.dialog.warn("服务器未部署'%s'的资源网站,请联系苦逼运维!" % self.SrcIP)
+            elif ask == 'Error4':
+                self.right.AppendError("%s, 资源未上传或资源丢失!" % ask)
+                self.dialog.error("资源未上传或资源丢失!")
+            elif ask == 'Error5':
+                self.right.AppendWarn("%s, 平台没有整包!" % ask)
+                self.dialog.warn("别逗，平台没有整包!")
+            elif ask == 'ok':
+                self.right.AppendWarn("更新成功!")
+                self.dialog.info("更新成功!")
+            else:
+                self.right.AppendError(ask)
+                self.right.AppendError("未知原因导致更新失败,请联系苦逼运维!")
+                self.dialog.error("%s\r\n未知原因导致更新失败,请联系苦逼运维!" % ask)
+        except Exception as error:
+            self.dialog.error(error.__str__())
+            self.right.AppendError(error.__str__())
+            self.right.AppendWarn("更新资源失败!")
+            BtnConnect = self.FindWindowById(ID_C_BtnCnt)
+            BtnConnect.SetLabel('启动连接')
+            BtnConnect.SetForegroundColour(wx.BLACK)
+        finally:
+            e.Skip()
+
+
+class SocketClient(socket.socket):
+    def __init__(self, host="192.168.1.148", port=5000, authkey=b"123456"):
+        super(SocketClient, self).__init__(socket.AF_INET, socket.SOCK_STREAM)
+        self.settimeout(5)
+
+    def client(self, host, port, authkey=''):
+        try:
+            self.connect((host, port))
         except Exception as e:
             raise e
+        # 获取加密方式
+        urandom = self.recv(1024)
 
-    def close(self):
-        self.server.shutdown()
-        self.server.server_close()
+        # 发送密钥
+        authkey = hmac.new(authkey.encode('utf-8'), urandom).hexdigest().encode('utf-8')
+        self.sendall(authkey)
 
+        # 接收连接状态
+        status = self.recv(1024).decode('utf-8')
+
+        if status == '0':
+            return True
+        elif status == '10001':
+            self.shutdown(socket.SHUT_RDWR)
+            self.close()
+            raise ExceptionMsg('[Connect Error 10001] 服务端拒绝该IP访问,连接不通过。')
+        elif status == '10002':
+            self.shutdown(socket.SHUT_RDWR)
+            self.close()
+            raise ExceptionMsg('[Connect Error 10002] 服务端拒绝该IP访问,连接不通过。')
+        elif status == '10003':
+            self.shutdown(socket.SHUT_RDWR)
+            self.close()
+            raise ExceptionMsg('[Connect Error 10003] 密码验证失败,连接不通过。')
+        else:
+            self.shutdown(socket.SHUT_RDWR)
+            self.close()
+            raise ExceptionMsg('[Connect Error] 未知原因,无法连接。')
 
 
 class ExceptionMsg(Exception):

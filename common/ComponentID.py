@@ -15,32 +15,55 @@
 
 @desc:
 '''
-import wx
+import wx, os, hashlib
 
-ID_C_Root = wx.NewId()
-ID_C_HomePage = wx.NewId()
+# wx.NewId() 被替换成wx.NewIdRef()
+ID_C_Root = wx.NewIdRef()
+ID_C_HomePage = wx.NewIdRef()
 
-ID_C_SIP = wx.NewId()
-ID_C_SPort = wx.NewId()
-ID_C_SKey = wx.NewId()
-ID_C_BtnCnt = wx.NewId()
+ID_C_SIP = wx.NewIdRef()
+ID_C_SPort = wx.NewIdRef()
+ID_C_SUser = wx.NewIdRef()
+ID_C_SKey = wx.NewIdRef()
+ID_C_BtnCnt = wx.NewIdRef()
 
-ID_C_IP = wx.NewId()
-ID_C_PkgID = wx.NewId()
-ID_C_PkgType = wx.NewId()
+ID_C_IP = wx.NewIdRef()
+ID_C_PkgID = wx.NewIdRef()
+ID_C_SvcType = wx.NewIdRef()
+ID_C_PkgType = wx.NewIdRef()
 
-ID_C_SrcFile = wx.NewId()
-ID_C_BtnOpenFile = wx.NewId()
-ID_C_BtnSrc = wx.NewId()
-ID_C_BtnUpdate = wx.NewId()
-ID_C_Windows = wx.NewId()
-ID_C_MAC = wx.NewId()
-ID_C_Android = wx.NewId()
-ID_Ios = wx.NewId()
-ID_C_SubDir = wx.NewId()
+ID_C_SrcFile = wx.NewIdRef()
+ID_C_BtnOpenFile = wx.NewIdRef()
+ID_C_BtnSrc = wx.NewIdRef()
+ID_C_BtnUpdate = wx.NewIdRef()
+ID_C_Windows = wx.NewIdRef()
+ID_C_MAC = wx.NewIdRef()
+ID_C_Android = wx.NewIdRef()
+ID_Ios = wx.NewIdRef()
+ID_C_SubDir = wx.NewIdRef()
 
-ID_C_BtnSwitch = wx.NewId()
-ID_C_TeLog = wx.NewId()
+ID_C_BtnSwitch = wx.NewIdRef()
+ID_C_TeLog = wx.NewIdRef()
+
+
+def isfile(target):
+    try:
+        return os.path.isfile(target)
+    except:
+        return False
+
+
+def get_md5(target):
+    obj = hashlib.md5()
+    if not isfile(target):
+        if not isinstance(target, bytes):
+            target = target.encode("utf-8")
+        obj.update(target)
+    else:
+        with open(target, 'rb') as f:
+            obj.update(f.read())
+    return obj.hexdigest()
+
 
 if __name__ == '__main__':
     pass

@@ -7,7 +7,7 @@
   "Type": 0,
   "SrcDir": "D:/IIS-Site/ClientResource/ClientPackage/zip",
   "UnzipDir": "D:/IIS-Site/ClientResource/ClientPackage/unzip",
-  "BakDir": "D:/IIS-Site/ClientResource/ClientPackage\bak",
+  "BakDir": "D:/IIS-Site/ClientResource/ClientPackage/bak",
   "DstDir": "D:/IIS-Site/ClientResource/{host_id}/hotupdate/GameData",
   "Device_types": [
     "android",

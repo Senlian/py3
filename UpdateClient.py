@@ -18,18 +18,20 @@ python 3.6.3
 '''
 import time
 import os, sys, hmac, re
-import wx, wx.aui
+import wx, wx.aui, wx.adv
 import wx.stc as STC
 import socket, threading
 from multiprocessing import freeze_support
 from common.ComponentID import *
 
+print(wx.version())
 VERSION = time.strftime("%Y.%m.%d")
 
 wildcard = u"zip files (*.zip)|*.zip|" \
            "rar files (*.rar)|*.rar|" \
            "tar files (*.tar)|*.tar|" \
            "txt files (*.txt)|*.txt|" \
+           "csv files (*.csv)|*.csv|" \
            "tar.gz files (*.tar.gz)|*.tar.gz|" \
            "All files (*.*)|*.*"
 
@@ -112,6 +114,12 @@ class LeftPage(wx.Panel):
     def __init__(self, parent=None):
         super(LeftPage, self).__init__(parent=parent)
         self.dialog = Dialogs(self)
+        self.ctrl = wx.adv.AnimationCtrl(self, wx.NewIdRef(), pos=(0,0),size=(460,150))
+        gif_name = r'E:\GitHub\py3\socketDemo1\2.gif'
+        gif = self.ctrl.LoadFile(gif_name, wx.adv.ANIMATION_TYPE_GIF)
+
+        self.ctrl.SetBackgroundColour(self.GetBackgroundColour())
+        self.ctrl.Play()
         self.OnInit()
 
     def OnInit(self):
@@ -128,6 +136,7 @@ class LeftPage(wx.Panel):
         self.BtnUpdate.SetForegroundColour(wx.BLUE)
 
         self.vBox.Add(self.BtnSwitch, 0, wx.LEFT | wx.EXPAND, 435)
+        # self.vBox.Add(self.ctrl)
         self.vBox.Add(self.ServerFace())
         self.vBox.AddSpacer(15)
         self.vBox.Add(self.ClientFace())
@@ -137,7 +146,7 @@ class LeftPage(wx.Panel):
         self.SetSizer(self.vBox)
 
     def ServerFace(self):
-        _stBox = wx.StaticBox(parent=self, id=wx.NewId(), label="资源服配置")
+        _stBox = wx.StaticBox(parent=self, id=wx.NewIdRef(), label="资源服配置")
         _stBoxS = wx.StaticBoxSizer(_stBox, wx.VERTICAL)
         _hBox = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -172,53 +181,53 @@ class LeftPage(wx.Panel):
         return _stBoxS
 
     def ClientFace(self):
-        _stBox = wx.StaticBox(parent=self, id=wx.NewId(), label="更新设置")
+        _stBox = wx.StaticBox(parent=self, id=wx.NewIdRef(), label="更新设置")
         _stBoxS = wx.StaticBoxSizer(_stBox, wx.VERTICAL)
         _hBox1 = wx.BoxSizer(wx.HORIZONTAL)
 
-        _stTextIP = wx.StaticText(self, -1, '服务器:')
-        _stTextIP.SetFont(self.FT_9RNB)
-        _TextIP = wx.TextCtrl(self, ID_C_IP, '192.168.1.13')
-        _TextIP.Bind(wx.EVT_KILL_FOCUS, self.CheckIP)
+        # _stTextIP = wx.StaticText(self, -1, '服务器:')
+        # _stTextIP.SetFont(self.FT_9RNB)
+        # _TextIP = wx.TextCtrl(self, ID_C_IP, '192.168.1.13')
+        # _TextIP.Bind(wx.EVT_KILL_FOCUS, self.CheckIP)
+        #
+        # _stTextGameID = wx.StaticText(self, -1, '游戏代号:')
+        # _stTextGameID.SetFont(self.FT_9RNB)
+        # _GameList = ["1000", "1001", "1002", "1003", "1004", "1005", "1006", "1007", "1008", "1009", "1010", "1011",
+        #              "1012", "1013", "1014", "1015", "1016", "1017", "1018", "1019", "1020", "1021", "1022", "1023",
+        #              "1024", "1025", "1026"]
+        # _TextGameID = wx.ComboBox(parent=self, id=ID_C_PkgID, value="1000", choices=_GameList)
+        # _TextGameID.Bind(wx.EVT_KILL_FOCUS, self.CheckNumber)
+        #
+        # _stTextGameType = wx.StaticText(self, -1, '客户端类型:')
+        # _stTextGameType.SetFont(self.FT_9RNB)
+        # _TextGameType = wx.ComboBox(parent=self, id=ID_C_PkgType, value="热更新包", choices=["热更新包", "整包"],
+        #                             style=wx.CB_READONLY)
 
-        _stTextGameID = wx.StaticText(self, -1, '游戏代号:')
-        _stTextGameID.SetFont(self.FT_9RNB)
-        _GameList = ["1000", "1001", "1002", "1003", "1004", "1005", "1006", "1007", "1008", "1009", "1010", "1011",
-                     "1012", "1013", "1014", "1015", "1016", "1017", "1018", "1019", "1020", "1021", "1022", "1023",
-                     "1024", "1025", "1026"]
-        _TextGameID = wx.ComboBox(parent=self, id=ID_C_PkgID, value="1000", choices=_GameList)
-        _TextGameID.Bind(wx.EVT_KILL_FOCUS, self.CheckNumber)
+        # _hBox1.Add(_stTextIP, 1, wx.LEFT | wx.EXPAND, 5)
+        # _hBox1.Add(_TextIP)
 
-        _stTextGameType = wx.StaticText(self, -1, '客户端类型:')
-        _stTextGameType.SetFont(self.FT_9RNB)
-        _TextGameType = wx.ComboBox(parent=self, id=ID_C_PkgType, value="热更新包", choices=["热更新包", "整包"],
-                                    style=wx.CB_READONLY)
+        # _hBox1.Add(_stTextGameID, 1, wx.LEFT | wx.EXPAND, 10)
+        # _hBox1.Add(_TextGameID)
 
-        _hBox1.Add(_stTextIP, 1, wx.LEFT | wx.EXPAND, 5)
-        _hBox1.Add(_TextIP)
-
-        _hBox1.Add(_stTextGameID, 1, wx.LEFT | wx.EXPAND, 10)
-        _hBox1.Add(_TextGameID)
-
-        _hBox1.Add(_stTextGameType, 1, wx.LEFT | wx.EXPAND, 10)
-        _hBox1.Add(_TextGameType)
-        _hBox1.AddSpacer(5)
+        # _hBox1.Add(_stTextGameType, 1, wx.LEFT | wx.EXPAND, 10)
+        # _hBox1.Add(_TextGameType)
+        # _hBox1.AddSpacer(5)
 
         _hBox2 = wx.BoxSizer(wx.HORIZONTAL)
         _CkBox1 = wx.StaticText(self, -1, '设备选择：')
         _CkBox1.SetFont(self.FT_9RNB)
-        _CkBox2 = wx.CheckBox(self, ID_C_Windows, 'windows', style=wx.CHK_2STATE)
-        _CkBox3 = wx.CheckBox(self, ID_C_MAC, 'mac')
-        _CkBox4 = wx.CheckBox(self, ID_C_Android, 'android')
-        _CkBox5 = wx.CheckBox(self, ID_Ios, 'ios')
-        _DeviceDir = wx.StaticText(self, -1, '设备目录：')
-        _TextDevice = wx.TextCtrl(self, ID_C_SubDir, '1')
-        _TextDevice.Bind(wx.EVT_KILL_FOCUS, self.CheckNumber)
-        _DeviceDir.SetFont(self.FT_9RNB)
+        _CkBox2 = wx.CheckBox(self, ID_C_Windows, '平台', style=wx.CHK_2STATE)
+        _CkBox3 = wx.CheckBox(self, ID_C_MAC, '游戏')
+        _CkBox4 = wx.CheckBox(self, ID_C_Android, 'Web')
+        # _CkBox5 = wx.CheckBox(self, ID_Ios, 'ios')
+        # _DeviceDir = wx.StaticText(self, -1, '设备目录：')
+        # _TextDevice = wx.TextCtrl(self, ID_C_SubDir, '1')
+        # _TextDevice.Bind(wx.EVT_KILL_FOCUS, self.CheckNumber)
+        # _DeviceDir.SetFont(self.FT_9RNB)
         _CkBox2.SetValue(True)
         _CkBox3.SetValue(True)
         _CkBox4.SetValue(True)
-        _CkBox5.SetValue(True)
+        # _CkBox5.SetValue(True)
 
         _hBox2.AddSpacer(5)
         _hBox2.Add(_CkBox1)
@@ -228,10 +237,10 @@ class LeftPage(wx.Panel):
         _hBox2.AddSpacer(5)
         _hBox2.Add(_CkBox4)
         _hBox2.AddSpacer(5)
-        _hBox2.Add(_CkBox5)
-        _hBox2.AddSpacer(10)
-        _hBox2.Add(_DeviceDir)
-        _hBox2.Add(_TextDevice, 1, wx.RIGHT | wx.EXPAND, 5)
+        # _hBox2.Add(_CkBox5)
+        # _hBox2.AddSpacer(10)
+        # _hBox2.Add(_DeviceDir)
+        # _hBox2.Add(_TextDevice, 1, wx.RIGHT | wx.EXPAND, 5)
 
         _hBox3 = wx.BoxSizer(wx.HORIZONTAL)
         _TextSrc = wx.TextCtrl(self, ID_C_SrcFile, "")

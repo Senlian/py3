@@ -300,8 +300,7 @@ class SocketServerHandler(socketserver.BaseRequestHandler):
             return True
 
 
-
 if __name__ == '__main__':
     freeze_support()
-    server = socketserver.ThreadingTCPServer(("192.168.1.18", 5000), SocketServerHandler)
+    server = socketserver.ThreadingTCPServer(("127.0.0.1", 5000), SocketServerHandler)
     server.serve_forever()

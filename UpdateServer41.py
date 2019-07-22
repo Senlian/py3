@@ -23,7 +23,7 @@ import os, shutil
 import win32file, zipfile, json
 import socketserver, hmac
 from multiprocessing import freeze_support, Process
-
+# 需要更改
 BindIPs = []
 StopIPs = []
 AuthKey = '123456'
@@ -114,5 +114,7 @@ class SocketServerHandler(socketserver.BaseRequestHandler):
 
 if __name__ == '__main__':
     freeze_support()
-    server = socketserver.ThreadingTCPServer(("172.17.62.112", 8000), SocketServerHandler)
+    # 需要更改
+    server = socketserver.ThreadingTCPServer(("127.0.0.1", 8000), SocketServerHandler)
     server.serve_forever()
+
