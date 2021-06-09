@@ -6,7 +6,7 @@ aliyun-python-sdk-ecs==4.16.5
 certifi==2019.3.9
 chardet==3.0.4
 cycler==0.10.0
-Django==2.2
+Django==2.2.22
 idna==2.8
 Jinja2==2.10.1
 jmespath==0.9.4
