@@ -3,7 +3,7 @@ aliyun-python-sdk-cms==6.0.13
 aliyun-python-sdk-core==2.13.4
 aliyun-python-sdk-core-v3==2.13.3
 aliyun-python-sdk-ecs==4.16.5
-certifi==2019.3.9
+certifi==2022.12.7
 chardet==3.0.4
 cycler==0.10.0
 Django==2.2
